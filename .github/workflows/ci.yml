@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: attendance_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 3306:3306
+    env:
+      DB_NAME: attendance_test
+      DB_USER: test
+      DB_PASSWORD: test
+      DB_HOST: 127.0.0.1
+      DB_DIALECT: mysql
+      DB_CONNECT_RETRIES: 20
+      DB_CONNECT_RETRY_DELAY_MS: 2000
+      PORT: 4000
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for MySQL to be reachable
+        # Simple Node TCP probe to wait for MySQL service
+        run: |
+          node -e "const net=require('net');const host='127.0.0.1';const port=3306;const max=30;let i=0;const tryConn=()=>{const s=net.createConnection({host,port},()=>{console.log('MySQL reachable');process.exit(0);});s.on('error',()=>{if(++i>=max){console.error('MySQL not reachable after retries');process.exit(1);}setTimeout(tryConn,2000);});};tryConn();"
+
+      - name: Run tests
+        run: npm test
+        env:
+          CI: true
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    name: Test & Build
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.1
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: attendance_db
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm test
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: root
+          DB_PASSWORD: root
+          DB_NAME: attendance_db
+          PORT: 4000
+
+      - name: Build Docker image (if applicable)
+        run: |
+          echo "✓ Docker build would run here"
+          docker --version
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "=== CI Run Summary ==="
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Status: ${{ job.status }}"
