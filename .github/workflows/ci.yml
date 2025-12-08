@@ -43,7 +43,7 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Wait for MySQL to be reachable
         # Simple Node TCP probe to wait for MySQL service
