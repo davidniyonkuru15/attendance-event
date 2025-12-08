@@ -1,39 +1,33 @@
-# Node.js
+# Dependencies
 node_modules/
-npm-debug.log*
-yarn-error.log*
-package-lock.json
+npm-debug.log
+yarn-error.log
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Logs
 logs/
 *.log
-pids/
-*.pid
-*.seed
-*.pid.lock
 
-# Docker
-docker-compose.override.yml
-**/Dockerfile.*
-
-# MySQL
-mysql-data/
-*.sql
-*.sqlite
-*.sqlite3
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# IDE / Editors
-.vscode/
-.idea/
-*.sublime-workspace
-*.sublime-project
-
-# Build output
+# Misc
 dist/
 build/
-tmp/
+.cache/
