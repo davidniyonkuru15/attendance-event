@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Attendance</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>Attendance</h1>
+    <section id="form-section">
+      <h2>Add Attendance</h2>
+      <form id="attendanceForm">
+        <label>
+          Name:
+          <input type="text" name="name" required />
+        </label>
+
+        <!-- New inputs: userId and eventId required by backend -->
+        <label>
+          User ID:
+          <input type="number" name="userId" value="1" min="1" required />
+        </label>
+        <label>
+          Event ID:
+          <input type="number" name="eventId" value="1" min="1" required />
+        </label>
+
+        <label>
+          Date:
+          <input type="date" name="date" required />
+        </label>
+        <label>
+          Status:
+          <select name="status" required>
+            <option value="present">Present</option>
+            <option value="absent">Absent</option>
+            <option value="late">Late</option>
+          </select>
+        </label>
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+    <section id="list-section">
+      <h2>Records</h2>
+      <ul id="attendanceList"></ul>
+    </section>
+
+    <p><a href="/">Back to Home</a></p>
+  </main>
+
+  <script src="/js/attendance.js"></script>
+</body>
+</html>
