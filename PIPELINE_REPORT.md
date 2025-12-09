@@ -84,6 +84,24 @@ Include these screenshots in the final PDF or repo `docs/screenshots/` folder. C
 
 Place screenshots under a `docs/screenshots/` folder and reference them here.
 
+### Screenshot placeholders
+
+Please add the following images to `docs/screenshots/` (these files are referenced below):
+
+- `01_github_actions_run.png` — GitHub Actions workflow run summary
+- `02_dockerhub_tags.png` — Docker Hub image/tags page
+- `03_kubectl_pods.png` — `kubectl get pods -n attendance` output or screenshot
+- `04_grafana_hpa.png` — Grafana dashboard showing CPU and HPA events
+- `05_alertmanager_slack.png` — Alertmanager alert and Slack notification screenshot
+
+Insert images below the corresponding sections or place them all in a `Screenshots` section at the end.
+
+#### Example image insertion (Markdown):
+
+```markdown
+![GitHub Actions run](docs/screenshots/01_github_actions_run.png)
+```
+
 ---
 
 ## 4) Resource Calculation Table
