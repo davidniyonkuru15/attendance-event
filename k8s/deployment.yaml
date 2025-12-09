@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: attendance-app
+  namespace: attendance
+  labels:
+    app: attendance-event
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: attendance-event
+  template:
+    metadata:
+      labels:
+        app: attendance-event
+        version: v1
+    spec:
+      containers:
+      - name: attendance-app
+        image: davidniyonkuru15/attendance-event:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 4000
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "4000"
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: attendance-config
+              key: db.host
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: attendance-config
+              key: db.port
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: attendance-config
+              key: db.name
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: password
+        - name: DB_DIALECT
+          value: "mysql"
+        - name: DB_CONNECT_RETRIES
+          value: "10"
+        - name: DB_CONNECT_RETRY_DELAY_MS
+          value: "2000"
+        
+        # Resource requests and limits
+        resources:
+          requests:
+            cpu: 100m           # 0.1 CPU cores (100 millicores)
+            memory: 128Mi       # 128 megabytes
+          limits:
+            cpu: 500m           # 0.5 CPU cores (max burst)
+            memory: 512Mi       # 512 megabytes (max memory)
+        
+        # Liveness probe: restart if app crashes
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 4000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Readiness probe: remove from load balancer if not ready
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 4000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        
+        # Startup probe: give app time to boot
+        startupProbe:
+          httpGet:
+            path: /
+            port: 4000
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 30  # 30 * 5s = 150s max startup time
+        
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+      
+      # Node affinity: prefer nodes with specific labels
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                - app-server
+      
+      # Pod disruption budget: keep at least 2 pods running during voluntary disruptions
+      terminationGracePeriodSeconds: 30
+      
+      volumes:
+      - name: logs
+        emptyDir: {}

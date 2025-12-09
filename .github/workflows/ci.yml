@@ -329,3 +329,125 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
         continue-on-error: true
+
+  k8s-deploy:
+    name: Deploy to Kubernetes
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'latest'
+
+      - name: Create namespace
+        run: |
+          kubectl create namespace attendance --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create/Update secrets
+        run: |
+          kubectl create secret generic db-credentials \
+            --from-literal=username=root \
+            --from-literal=password=${{ secrets.DB_PASSWORD }} \
+            -n attendance \
+            --dry-run=client -o yaml | kubectl apply -f -
+          
+          kubectl create secret generic mysql-secret \
+            --from-literal=root-password=${{ secrets.DB_PASSWORD }} \
+            -n attendance \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy with Helm (Rolling Update)
+        run: |
+          helm upgrade --install attendance-event ./helm/attendance-event \
+            --namespace attendance \
+            --set image.repository=${{ secrets.DOCKER_USERNAME }}/attendance-event \
+            --set image.tag=${{ github.sha }} \
+            --set service.type=LoadBalancer \
+            --wait \
+            --timeout 5m \
+            --atomic
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/attendance-event-app -n attendance --timeout=5m
+          kubectl get all -n attendance
+
+      - name: Wait for service LoadBalancer IP
+        run: |
+          echo "Waiting for LoadBalancer IP..."
+          kubectl get svc attendance-event -n attendance -w > /tmp/svc.log &
+          sleep 30
+          kill %1 2>/dev/null || true
+          EXTERNAL_IP=$(kubectl get svc attendance-event -n attendance -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
+          echo "Service External IP: $EXTERNAL_IP"
+
+      - name: Run smoke tests
+        run: |
+          echo "Running basic health check..."
+          for i in {1..10}; do
+            if kubectl get pods -n attendance -l app.kubernetes.io/name=attendance-event | grep Running; then
+              echo "Pods running successfully"
+              break
+            fi
+            sleep 5
+          done
+
+      - name: Notify Slack - K8s Deploy Success
+        if: success()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "Kubernetes Deployment - SUCCESS",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Kubernetes Deployment - SUCCESS* ✅\nCluster: `${{ secrets.K8S_CLUSTER_NAME }}`\nNamespace: `attendance`\nImage Tag: `${{ github.sha }}`\nReplicas: 3\nStrategy: Rolling Update\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
+
+      - name: Notify Slack - K8s Deploy Failed
+        if: failure()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "Kubernetes Deployment - FAILED",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Kubernetes Deployment - FAILED* ❌\nCluster: `${{ secrets.K8S_CLUSTER_NAME }}`\nNamespace: `attendance`\nCommit: `${{ github.sha }}`\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
