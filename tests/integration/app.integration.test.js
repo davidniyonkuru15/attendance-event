@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app = require('../../app');
+const db = require('../../models');
 
 let server;
 
@@ -10,6 +11,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (server && server.close) await new Promise(r => server.close(r));
+  // ensure DB connection closed to avoid open handles
+  if (db && db.sequelize) await db.sequelize.close();
 });
 
 describe('Integration: running server with DB', () => {

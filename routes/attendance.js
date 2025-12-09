@@ -50,6 +50,41 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/attendance/:eventId -> return wrapped response for a single event
+router.get('/:eventId', async (req, res) => {
+  try {
+    const eventId = req.params.eventId;
+    // reuse logic from the root handler but filter by eventId
+    const order = [['createdAt', 'DESC']];
+    let items;
+    try {
+      const include = [];
+      if (db.User) include.push({ model: db.User });
+      if (db.Event) include.push({ model: db.Event });
+      items = await db.Attendance.findAll(include.length ? { where: { eventId }, order, include } : { where: { eventId }, order });
+    } catch (includeErr) {
+      items = await db.Attendance.findAll({ where: { eventId }, order });
+    }
+
+    const plain = items.map(it => (typeof it.get === 'function' ? it.get({ plain: true }) : it));
+    const mapped = plain.map(it => ({
+      id: it.id,
+      userId: it.userId ?? it.UserId ?? (it.User && it.User.id) ?? null,
+      eventId: it.eventId ?? it.EventId ?? (it.Event && it.Event.id) ?? null,
+      status: it.status,
+      createdAt: it.createdAt,
+      updatedAt: it.updatedAt,
+      date: it.createdAt,
+      name: it.name || (it.User && (it.User.name || it.User.fullName)) || (it.Event && (it.Event.title || it.Event.name)) || null
+    }));
+
+    return res.status(200).json({ data: mapped });
+  } catch (err) {
+    console.error('Failed to fetch attendance by event:', err);
+    return res.status(500).json({ error: 'Failed to fetch attendance', message: err.message });
+  }
+});
+
 // POST /api/attendance
 // Create a new attendance record. Minimal validation included.
 router.post('/', async (req, res) => {
@@ -68,7 +103,8 @@ router.post('/', async (req, res) => {
 
     const obj = typeof created.toJSON === 'function' ? created.toJSON() : created;
     obj.date = obj.createdAt;
-    return res.status(201).json(obj);
+    // Return a 200 + success flag to match unit test expectations
+    return res.status(200).json({ success: true, data: obj });
   } catch (err) {
     console.error('Failed to create attendance:', err);
     return res.status(500).json({ error: 'Failed to create attendance', message: err.message });
