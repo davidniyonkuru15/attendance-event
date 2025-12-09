@@ -4,6 +4,13 @@
 
 set -e
 
+# Check if kubectl is installed
+if ! command -v kubectl &> /dev/null; then
+    echo "ERROR: kubectl is not installed"
+    echo "Installation guide: https://kubernetes.io/docs/tasks/tools/"
+    exit 1
+fi
+
 NAMESPACE="${NAMESPACE:-attendance}"
 APP_NAME="attendance-app"
 IMAGE="${IMAGE:-davidniyonkuru15/attendance-event:latest}"

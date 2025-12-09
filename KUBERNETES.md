@@ -15,9 +15,10 @@ This guide covers deploying the Attendance Event application to Kubernetes using
 ## Prerequisites
 
 - Kubernetes cluster (1.24+) with at least 3 nodes
-- `kubectl` configured to access your cluster
-- `helm` 3.0+ installed
+- `kubectl` configured to access your cluster ([Install kubectl](https://kubernetes.io/docs/tasks/tools/))
+- `helm` 3.0+ installed ([Install Helm](https://helm.sh/docs/intro/install/))
 - Docker images pushed to Docker Hub (`davidniyonkuru15/attendance-event:latest`)
+- Local environment with kubectl/helm **OR** CI/CD environment (GitHub Actions, GitLab CI, etc.)
 
 ## Architecture
 
@@ -64,7 +65,9 @@ Storage:         10Gi
 
 ## Deployment Methods
 
-### Method 1: Using Helm (Recommended)
+### Method 1: Using Helm (Recommended) - CI/CD or Local with kubectl/helm
+
+**Prerequisites:** kubectl and helm must be installed locally
 
 ```bash
 # Clone and navigate to repo
@@ -78,14 +81,27 @@ kubectl create secret generic db-credentials \
   --from-literal=password=rootpassword \
   -n attendance
 
-# Deploy using Helm
+# Make script executable (if needed)
+chmod +x scripts/helm-deploy.sh
+
+# Deploy using Helm (requires kubectl and helm installed)
+./scripts/helm-deploy.sh
+
+# Or use environment variables
+export IMAGE_TAG=latest
+export NAMESPACE=attendance
 ./scripts/helm-deploy.sh
 
 # Check deployment
 kubectl get all -n attendance
 ```
 
-### Method 2: Using kubectl with Manifests
+**Note:** This script runs in:
+- GitHub Actions CI/CD (tools pre-installed)
+- Local machine with kubectl/helm installed
+- Any system with kubectl/helm available
+
+### Method 2: Using kubectl with Manifests - Any System
 
 ```bash
 # Create namespace
@@ -163,9 +179,11 @@ helm upgrade attendance-event ./helm/attendance-event \
 kubectl rollout status deployment/attendance-event-app -n attendance -w
 ```
 
-## Blue-Green Deployment
+## Using Blue-Green Deploy Script
 
 Zero-downtime deployments by running two identical environments and switching traffic.
+
+**Prerequisites:** kubectl must be installed
 
 ### How It Works:
 
@@ -178,19 +196,23 @@ Zero-downtime deployments by running two identical environments and switching tr
 ### Using Blue-Green Deploy Script:
 
 ```bash
-# Make script executable
+# Make script executable (if needed)
 chmod +x scripts/blue-green-deploy.sh
 
 # Set environment variables
 export IMAGE=davidniyonkuru15/attendance-event:v2.0.0
 export NAMESPACE=attendance
 
-# Deploy to inactive environment
+# Deploy to inactive environment (requires kubectl installed)
 ./scripts/blue-green-deploy.sh deploy
 
 # If issues occur, rollback instantly
 ./scripts/blue-green-deploy.sh rollback
 ```
+
+**Note:** This script requires kubectl to be installed. It's designed to run in:
+- Local machine with kubectl installed
+- CI/CD environments (GitHub Actions, etc.) with kubectl pre-installed
 
 ### Manual Blue-Green Setup:
 
