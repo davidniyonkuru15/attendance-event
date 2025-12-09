@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test": "npm run test:basic && npm run test:integration",
+    "test": "jest --runInBand --reporters=default --reporters=jest-junit",
     "test:basic": "node tests/basic.js",
     "test:integration": "timeout 15 npm start &  sleep 3 && node tests/integration.js || true",
     "lint": "echo 'Linting code...' && exit 0"
@@ -20,10 +20,15 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "jest-junit": "^13.0.0",
     "nodemon": "^3.0.2",
     "supertest": "^6.3.3"
   },
   "jest": {
     "testEnvironment": "node"
+  },
+  "jest-junit": {
+    "output": "test-results/junit.xml",
+    "suiteName": "attendance-event-tests"
   }
 }

@@ -66,6 +66,7 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 4000;
 
 // Use authenticate + retry loop so app waits until MySQL is ready
+// Returns a Promise that resolves with the server instance when listening
 async function startServer() {
   const maxRetries = parseInt(process.env.DB_CONNECT_RETRIES, 10) || 10;
   const retryDelay = parseInt(process.env.DB_CONNECT_RETRY_DELAY_MS, 10) || 2000;
@@ -77,8 +78,12 @@ async function startServer() {
       await db.sequelize.authenticate();
       await db.sequelize.sync();
       console.log('MySQL connected and tables created');
-      app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-      return;
+      return new Promise((resolve) => {
+        const server = app.listen(PORT, () => {
+          console.log(`Server running on port ${PORT}`);
+          resolve(server);
+        });
+      });
     } catch (err) {
       console.log(`DB connect attempt ${attempt}/${maxRetries} failed: ${err.message}`);
       if (attempt >= maxRetries) {
@@ -90,9 +95,13 @@ async function startServer() {
   }
 }
 
-startServer().catch(err => {
-  console.error('Fatal error starting server:', err);
-  process.exit(1);
-});
+// Only start server when this file is run directly (not when required by tests)
+if (require.main === module) {
+  startServer().catch(err => {
+    console.error('Fatal error starting server:', err);
+    process.exit(1);
+  });
+}
 
 module.exports = app;
+module.exports.startServer = startServer;
