@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: attendance-alerts
+  namespace: monitoring
+spec:
+  groups:
+  - name: attendance.rules
+    rules:
+    - alert: HighErrorRate
+      expr: |
+        rate(http_requests_total{job="attendance-app",status=~"5.."}[5m]) > 0.05
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "High 5xx error rate for attendance app"
+        description: "The application is returning >5% 5xx errors over 5m."
+
+    - alert: HighCPU
+      expr: |
+        sum(rate(container_cpu_usage_seconds_total{pod=~"attendance-app-.*"}[1m])) > 0.7
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage on attendance app"
+        description: "Cluster CPU usage by attendance app is high."
