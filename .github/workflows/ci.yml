@@ -107,7 +107,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          push: ${{ github.ref == 'refs/heads/main' }}
+          push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/attendance-event:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/attendance-event:latest
@@ -120,26 +120,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: No deploy credentials - skip deploy
-        if: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY == '' }}
-        run: |
-          echo "No DEPLOY_SSH_PRIVATE_KEY provided. Skipping deploy job."
-
-      - name: Start ssh-agent and add key
-        if: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY != '' }}
-        uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-
-      - name: Deploy (pull image and restart container)
-        if: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY != '' }}
+      - name: Deploy with SSH
         env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           IMAGE: ghcr.io/${{ github.repository_owner }}/attendance-event:latest
         run: |
-          ssh -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} \
+          if [ -z "$DEPLOY_SSH_PRIVATE_KEY" ] || [ -z "$DEPLOY_USER" ] || [ -z "$DEPLOY_HOST" ]; then
+            echo "Skipping deploy: missing DEPLOY_SSH_PRIVATE_KEY, DEPLOY_USER, or DEPLOY_HOST secrets."
+            exit 0
+          fi
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${DEPLOY_USER}@${DEPLOY_HOST} \
             "docker pull ${IMAGE} || true && docker stop attendance-app || true && docker rm attendance-app || true && docker run -d --name attendance-app -p 4000:4000 --restart unless-stopped ${IMAGE}"
+          rm -f ~/.ssh/deploy_key
 
   release:
     name: Create Release (on tag)
