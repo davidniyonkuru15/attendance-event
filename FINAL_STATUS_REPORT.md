@@ -6,7 +6,6 @@ coefacto
 **Repository:** https://github.com/davidniyonkuru15/attendance-event
 
 
----
 
 ## 📊 Executive Summary
 
