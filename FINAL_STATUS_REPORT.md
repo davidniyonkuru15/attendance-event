@@ -7,7 +7,7 @@ coefacto
 
 
 
-## 📊 Executive Summary
+## 📊 Executive Summar
 
 The Attendance Event Management System has been fully developed, tested, and configured for production deployment with:
 
