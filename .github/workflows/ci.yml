@@ -357,7 +357,8 @@ jobs:
 
       - name: Create namespace
         run: |
-          kubectl create namespace attendance --dry-run=client -o yaml | kubectl apply -f -
+          # Use the committed namespace manifest to avoid client-side OpenAPI validation
+          kubectl apply -f k8s/namespace-attendance.yaml --validate=false
 
       - name: Create/Update secrets
         run: |
