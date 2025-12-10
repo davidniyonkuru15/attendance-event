@@ -3,6 +3,7 @@
 **Project Status:** 🚀 **PRODUCTION READY**  
 **Completion Date:** December 2024  
 **Repository:** https://github.com/davidniyonkuru15/attendance-event
+work well 
 
 ---
 
